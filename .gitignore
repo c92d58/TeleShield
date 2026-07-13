@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.session
+.env
+
+# Session
+.tg-sessions/
+config.json
+
+# OS
+.DS_Store
+Thumbs.db
