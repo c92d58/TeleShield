@@ -7,6 +7,14 @@
     <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
     <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
     <img src="https://img.shields.io/badge/telethon-1.44%2B-purple" alt="Telethon">
+    <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fc92d58%2FTeleShield%2Freleases%2Flatest&query=%24.tag_name&label=release&color=22C55E" alt="Release">
+  </p>
+  <p>
+    <a href="https://teleshield.wahsun.org">🌐 產品頁面</a>
+    ·
+    <a href="https://github.com/c92d58/TeleShield/releases/latest">📦 下載</a>
+    ·
+    <a href="https://github.com/c92d58/TeleShield#-快速開始--quick-start">🚀 快速開始</a>
   </p>
 </div>
 
