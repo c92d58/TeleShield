@@ -12,7 +12,7 @@ Telegram 個人帳號廣告封鎖工具
 可選：排程每小時自動掃描（Hermes cron）
 """
 
-import asyncio, os, json, re, sys, time
+import asyncio, os, json, re, sys, time, tempfile
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from telethon import events
@@ -61,6 +61,37 @@ def is_spam(text: str) -> bool:
         if re.search(pattern, text, re.IGNORECASE):
             return True
     return False
+
+
+# ──────────── 圖片 OCR ────────────
+
+def ocr_image(image_path: str) -> str:
+    """用本地 Tesseract OCR 辨識圖片中的文字"""
+    try:
+        from PIL import Image
+        import pytesseract
+        img = Image.open(image_path)
+        # 用中文+英文語言包
+        text = pytesseract.image_to_string(img, lang="chi_sim+eng")
+        return text.strip()
+    except Exception as e:
+        print(f"    ⚠️ OCR 失敗: {e}")
+        return ""
+
+
+async def check_photo(client, msg) -> str:
+    """下載圖片並 OCR，回傳辨識出的文字，無圖片時回傳空字串"""
+    if not msg or not msg.photo:
+        return ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
+            tmp = f.name
+        await client.download_media(msg, file=tmp)
+        text = ocr_image(tmp)
+        os.unlink(tmp)
+        return text
+    except Exception as e:
+        return ""
 
 # ──────────── 首次設定 ────────────
 
@@ -171,14 +202,23 @@ async def scan_and_block(dry_run: bool = False):
             spam_found = False
             spam_text = ""
             for msg in msgs:
-                if not msg or not msg.text:
+                if not msg:
                     continue
                 if msg.date and msg.date < now - timedelta(days=14):
                     continue  # 太舊的跳過
-                if is_spam(msg.text):
+                # 檢查文字
+                msg_text = msg.text or ""
+                if is_spam(msg_text):
                     spam_found = True
-                    spam_text = msg.text[:120]
+                    spam_text = msg_text[:120]
                     break
+                # 檢查圖片 OCR
+                if msg.photo:
+                    ocr_text = await check_photo(client, msg)
+                    if ocr_text and is_spam(ocr_text):
+                        spam_found = True
+                        spam_text = f"[圖片OCR] {ocr_text[:100]}"
+                        break
 
             if not spam_found:
                 continue
@@ -243,7 +283,7 @@ async def listen():
     @client.on(events.NewMessage(incoming=True))
     async def handler(event):
         msg = event.message
-        if not msg or not msg.text:
+        if not msg:
             return
         sender = await event.get_sender()
         if not isinstance(sender, User) or sender.is_self or sender.bot:
@@ -258,15 +298,27 @@ async def listen():
         except:
             pass
 
-        # 檢查是否為廣告
-        if not is_spam(msg.text):
+        # 檢查文字是否為廣告
+        spam_text = msg.text or ""
+        is_spam_by_text = is_spam(spam_text)
+
+        # 如果有圖片，也進行 OCR 檢查
+        ocr_found_spam = False
+        if not is_spam_by_text and msg.photo:
+            ocr_text = await check_photo(client, msg)
+            if ocr_text and is_spam(ocr_text):
+                ocr_found_spam = True
+                spam_text = ocr_text[:100]
+
+        if not is_spam_by_text and not ocr_found_spam:
             return
 
         name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
         uname = f"@{sender.username}" if sender.username else ""
         now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
-        print(f"\n[{now_str}] ⚠️  廣告: {name} {uname}")
-        print(f"    訊息: {msg.text[:100]}")
+        source = "📸" if ocr_found_spam else ""
+        print(f"\n[{now_str}] {source}⚠️  廣告: {name} {uname}")
+        print(f"    訊息: {spam_text[:100]}")
 
         try:
             await client(BlockRequest(id=sender.id))
