@@ -1,7 +1,7 @@
 <div align="center">
   <h1>🛡️ TeleShield</h1>
-  <p><strong>Telegram 個人帳號廣告封鎖守衛</strong><br>
-  <em>Your personal Telegram spam firewall — real-time, self-hosted, zero compromise.</em></p>
+  <p><strong>Telegram 全能廣告封鎖守衛</strong><br>
+  <em>Your personal Telegram spam firewall — private messages & group management, all in one.</em></p>
 
   <p>
     <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
@@ -14,23 +14,26 @@
 
 ## 📋 概述 / Overview
 
-**TeleShield** 是一個基於 Telethon 的 Telegram 個人帳號廣告封鎖工具。不同於 Bot API，它直接以你的身份登入，能夠處理 **個人私訊** 的廣告攔截——這是 Bot 做不到的。
+**TeleShield** 是一個全功能的 Telegram 廣告防禦工具，涵蓋 **個人私訊封鎖** 與 **群組踢除** 兩大場景。不同於 Bot API，它直接以你的身份登入，能處理 Bot 做不到的個人帳號防護。
 
-*TeleShield is a Telegram personal-account spam blocker powered by Telethon. Unlike Bot API bots, it logs in as you and blocks spam in **private DMs** — something bots simply cannot do.*
+*TeleShield is a full-featured Telegram spam defense system covering **private DM blocking** and **group moderation**. It logs in as you — something Bot API bots cannot do.*
 
 ---
 
 ## ✨ 功能 / Features
 
-| 功能 | 說明 |
-|------|------|
-| 🔍 **掃描封鎖** `--scan` | 掃描近期非聯絡人對話，自動比對廣告模式並封鎖 |
-| 🛡️ **即時監聽** `--listen` | 後台常駐，新訊息即時檢測，秒封廣告 |
-| 🧪 **試運行** `--dry-run` | 安全預覽，只顯示結果不實際封鎖 |
-| 📊 **狀態查詢** `--status` | 查看累計封鎖數、最後掃描時間 |
-| 📸 **圖片 OCR** `內建` | 純圖片廣告也能辨識，Tesseract 本地 OCR，資料不外傳 |
-| 🧠 **智能識別** | 20+ 中英文廣告正則模式，覆蓋投資、色情、賭博、推廣等 |
-| 📇 **白名單保護** | 你的聯絡人不會被掃描或封鎖 |
+| 功能 | 命令 | 說明 |
+|------|------|------|
+| 🔍 **私訊掃描** | `--scan` | 掃描近期非聯絡人對話，比對廣告模式並封鎖 |
+| 👥 **群組掃描** | `--group-scan` | 掃描群組近期訊息，踢除發廣告的成員（需管理員權限） |
+| 🛡️ **即時監聽** | `--listen` | 後台常駐，**同時監控私訊+群組**，秒級響應 |
+| 🧪 **試運行** | `--dry-run` | 安全預覽，只顯示結果不實際封鎖/踢除 |
+| 📸 **圖片 OCR** | 內建 | 純圖片廣告 → Tesseract 本地辨識文字 → 模式比對，**資料不外傳** |
+| 🧠 **學習模式** | `--learn <文字>` | 手動標記廣告，自動提取關鍵詞+生成正則模式 |
+| 📊 **封鎖報告** | `--report [day\|week]` | 生成每日/每週封鎖摘要，含類型統計+趨勢 |
+| ⚫ **黑名單** | `--blacklist add\|remove\|list [id]` | 加入黑名單後，在私訊/群組中**自動封鎖或踢除** |
+| ⚪ **白名單** | `--whitelist add\|remove\|list [id]` | 白名單用戶永不被掃描、封鎖或踢除 |
+| 📊 **狀態面板** | `--status` | 一覽封鎖數、踢除數、名單和學習模式狀態 |
 
 ---
 
@@ -40,6 +43,7 @@
 
 - Python 3.9+
 - Telegram API 憑證（[my.telegram.org/apps](https://my.telegram.org/apps)）
+- （選用）Tesseract OCR 用於圖片廣告辨識
 
 ### 安裝 / Install
 
@@ -48,10 +52,10 @@
 git clone https://github.com/c92d58/TeleShield.git
 cd TeleShield
 
-# 安裝依賴
+# 安裝核心依賴
 pip install telethon
 
-# 圖片 OCR 支援（選用）
+# 圖片 OCR 支援（選用，強烈建議安裝）
 apt install tesseract-ocr tesseract-ocr-chi-sim
 pip install pytesseract Pillow
 ```
@@ -65,44 +69,150 @@ python teleshield.py --setup
 依序輸入：
 1. `API ID` — 從 [my.telegram.org/apps](https://my.telegram.org/apps) 取得
 2. `API Hash` — 同上
-3. `手機號碼` — 含國碼，如 `+85264305931`
+3. `手機號碼` — 含國碼，如 `+852****5931`
 4. `驗證碼` — Telegram 會發送驗證碼到你手機
 
-登入成功後會自動儲存 Session，下次不需重複登入。
+登入成功後自動儲存 Session，下次不需重複登入。
 
 ### 基本用法 / Usage
 
 ```bash
+# ─── 私訊防護 ───
+
 # 先試運行看看結果
 python teleshield.py --dry-run
 
-# 實際掃描並封鎖
+# 實際掃描近期待處理的廣告
 python teleshield.py --scan
 
-# 啟動即時監聽（後台常駐）
+# 啟動即時監聽（後台常駐，私訊+群組全保護）
 python teleshield.py --listen
 
-# 查看狀態
+# ─── 群組管理 ───
+
+# 掃描所有管理中的群組，踢除廣告發送者
+python teleshield.py --group-scan
+
+# ─── 學習與報告 ───
+
+# 手動標記廣告文字，讓程式學習新模式
+python teleshield.py --learn "加微信 abc123 投資穩賺日入過萬"
+
+# 查看封鎖摘要
+python teleshield.py --report         # 過去 24 小時
+python teleshield.py --report week    # 過去 7 天 + 趨勢
+
+# ─── 名單管理 ───
+
+# 白名單（永不封鎖）
+python teleshield.py --whitelist add 12345678
+python teleshield.py --whitelist list
+
+# 黑名單（見一個封一個）
+python teleshield.py --blacklist add 87654321
+python teleshield.py --blacklist remove 87654321
+
+# 查看完整狀態
 python teleshield.py --status
 ```
 
 ---
 
-## 📖 命令參考 / Commands
+## 📖 完整命令參考 / Full Command Reference
 
 | 命令 | 說明 |
 |------|------|
-| `--setup <api_id> <api_hash> <phone> [code]` | 首次設定 / 重新登入 |
-| `--scan` | 掃描近期對話並封鎖廣告 |
-| `--dry-run` | 試掃描（不實際封鎖） |
-| `--listen` | 即時監聽模式，後台常駐 |
-| `--status` | 查看當前狀態和統計 |
+| `--setup [api_id] [api_hash] [phone] [code]` | 首次設定或重新登入 |
+| `--scan` | 掃描非聯絡人私訊，封鎖廣告 |
+| `--dry-run` | 試運行掃描（不實際封鎖） |
+| `--listen` | **即時監聽模式** — 私訊封鎖 + 群組踢除同時運作 |
+| `--group-scan` | 掃描管理中的群組，踢除廣告發送者 |
+| `--status` | 查看完整狀態面板 |
+| `--report [day\|week]` | 封鎖摘要報告（預設 day） |
+| `--learn <文字>` | 手動標記廣告文字，自動學習新模式 |
+| `--whitelist add\|remove\|list [user_id]` | 白名單管理 |
+| `--blacklist add\|remove\|list [user_id]` | 黑名單管理 |
+
+---
+
+## 👥 群組管理詳解
+
+TeleShield 支援自動管理你具有**管理員權限**的群組：
+
+| 場景 | 行為 |
+|------|------|
+| `--listen` 運行中 | 群組內有新訊息 → 自動檢測 → 踢除廣告發送者 |
+| `--group-scan` | 掃描最近 20 條訊息 → 批次踢除 |
+| 管理員自動跳過 | 群組管理員和創建者不受影響 |
+| 白名單跳過 | 白名單中的用戶不會被踢除 |
+| 3 天窗口 | 只檢查最近 3 天內的訊息 |
+
+踢除使用 **ChatBannedRights(view_messages=True)**，相當於 Telegram 的「封鎖用戶 + 移除」，對方無法再次加入。
+
+---
+
+## 🧠 學習模式詳解
+
+遇到新模式廣告時，使用 `--learn` 讓 TeleShield 自動學習：
+
+```bash
+# 範例：標記一個包含 URL 的廣告
+python teleshield.py --learn "https://bit.ly/3XabcDe 免費領取 BTC"
+
+# 範例：標記一個 LINE/微信推廣
+python teleshield.py --learn "➕官方LINE：@free888 每日推薦飆股"
+```
+
+學習機制：
+
+| 步驟 | 說明 |
+|------|------|
+| 🔍 提取關鍵詞 | 過濾停用詞，提取 2-6 字高價值關鍵詞 |
+| 🧩 生成正則 | 自動從 URL、ID 等結構生成可複用的模式 |
+| 💾 持久儲存 | 保存在 `config.json` 中，每次啟動載入 |
+| 🔄 即時生效 | 學習後 `is_spam()` 立即使用新模式 |
+
+累計學習結果可透過 `--status` 查看。
+
+---
+
+## 📊 封鎖報告
+
+```bash
+# 每日報告
+python teleshield.py --report
+
+# 每週報告（含每日趨勢）
+python teleshield.py --report week
+```
+
+報告內容：
+
+```
+📊 封鎖摘要 — 過去 24 小時
+────────────────────────────
+   總計封鎖: 12 人
+
+   來源:
+     • 私訊: 10 人
+     • 群組: 2 人
+
+   廣告類型 Top 5:
+     • 投資理財: 5 次
+     • 兼職詐騙: 3 次
+     • 色情: 2 次
+     • 賭博: 1 次
+     • 英文 Spam: 1 次
+
+   每日趨勢:
+     2026-07-14: 12 人
+```
 
 ---
 
 ## 🔍 廣告識別模式 / Spam Patterns
 
-TeleShield 內建 20+ 正則表達式，覆蓋以下類別：
+TeleShield 內建 20+ 正則表達式，加上學習模式可無限擴充：
 
 | 類別 | 範例關鍵字 |
 |------|-----------|
@@ -112,19 +222,33 @@ TeleShield 內建 20+ 正則表達式，覆蓋以下類別：
 | 🎰 賭博 | 賭、博彩、casino、betting |
 | 📣 群組推廣 | @xxx、t.me/xxx、加微信 |
 | 🎁 假優惠 | 免費領、紅包、優惠碼、推廣碼 |
-| 📢 **英文 Spam** | promotion, giveaway, earn money, free crypto |
-| 📸 **圖片 OCR** | 純圖片廣告→Tesseract 本地辨識文字→模式比對 |
-
-> 可自行在 `teleshield.py` 中的 `SPAM_PATTERNS` 列表中添加自定義模式。
+| 📢 英文 Spam | promotion, giveaway, earn money, free crypto |
+| 📸 **圖片 OCR** | 純圖片廣告 → Tesseract 本地辨識 → 模式比對 |
+| 🧠 **學習模式** | 你標記什麼，它就學會什麼 |
 
 ---
 
-## ⚠️ 安全注意事項 / Security Notes
+## ⚙️ 安全性與權限
 
-- **Session 文件** (`user.session`) 相當於你的 Telegram 登入憑證，請妥善保管
-- 建議設定檔案權限：`chmod 600 user.session config.json`
-- 不要將 Session 文件提交到 Git（已在 `.gitignore` 中排除）
-- API 憑證（`api_id` / `api_hash`）不要公開洩露
+### 身分驗證
+
+- 使用 **MTProto**（Telegram 官方協議）直接登入，非 Bot API
+- Session 文件（`user.session`）使用 Telethon 內部加密儲存
+- API 憑證僅儲存在本地 `config.json`
+
+### 權限需求
+
+| 功能 | 所需權限 |
+|------|---------|
+| 私訊封鎖 | 無需額外權限（任何帳號皆可封鎖他人） |
+| 群組踢除 | **群組管理員**（需 ban_users 權限） |
+| 圖片 OCR | 本地 Tesseract，無需網路權限 |
+
+### 風險說明
+
+- Session 文件 = 你的 Telegram 身份，務必保護好
+- `chmod 600 ~/.tg-sessions/*` 限制檔案權限
+- 群組踢除不可逆，使用 `--group-scan dry` 預覽再執行
 
 ---
 
@@ -132,28 +256,29 @@ TeleShield 內建 20+ 正則表達式，覆蓋以下類別：
 
 ```
 TeleShield/
-├── teleshield.py       # 主程式
+├── teleshield.py       # 主程式（完整功能）
 ├── README.md           # 本文件
 ├── LICENSE             # MIT 授權
 └── .gitignore
-```
 
-運行後會自動生成：
-```
-.tg-sessions/
+.tg-sessions/           # 運行後自動生成
 ├── user.session        # Telegram 登入 Session（已加密）
-└── config.json         # 設定檔案
+├── config.json         # 設定 + 學習模式 + 名單
+└── block_log.json      # 封鎖記錄（用於報告）
 ```
 
 ---
 
 ## 🧩 後續計劃 / Roadmap
 
-- [ ] 群組管理：自動踢除發廣告的群組成員
-- [ ] 學習模式：手動標記後自動歸納特徵
-- [ ] 封鎖日報：每日 / 每週封鎖摘要報告
-- [ ] 白名單 / 黑名單管理指令
 - [x] 圖片廣告辨識：Tesseract 本地 OCR
+- [x] 群組管理：自動踢除發廣告的群組成員
+- [x] 學習模式：手動標記後自動歸納特徵
+- [x] 封鎖報告：每日/每週封鎖摘要報告
+- [x] 白名單 / 黑名單管理指令
+- [ ] Docker 一鍵部署
+- [ ] Web Dashboard（查看封鎖統計 + 管理名單）
+- [ ] Telegram Bot 指令管理（/block, /whitelist 等）
 
 ---
 
