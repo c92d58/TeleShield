@@ -28,6 +28,7 @@
 | 🛡️ **即時監聽** `--listen` | 後台常駐，新訊息即時檢測，秒封廣告 |
 | 🧪 **試運行** `--dry-run` | 安全預覽，只顯示結果不實際封鎖 |
 | 📊 **狀態查詢** `--status` | 查看累計封鎖數、最後掃描時間 |
+| 📸 **圖片 OCR** `內建` | 純圖片廣告也能辨識，Tesseract 本地 OCR，資料不外傳 |
 | 🧠 **智能識別** | 20+ 中英文廣告正則模式，覆蓋投資、色情、賭博、推廣等 |
 | 📇 **白名單保護** | 你的聯絡人不會被掃描或封鎖 |
 
@@ -49,6 +50,10 @@ cd TeleShield
 
 # 安裝依賴
 pip install telethon
+
+# 圖片 OCR 支援（選用）
+apt install tesseract-ocr tesseract-ocr-chi-sim
+pip install pytesseract Pillow
 ```
 
 ### 首次設定 / First-time Setup
@@ -107,7 +112,8 @@ TeleShield 內建 20+ 正則表達式，覆蓋以下類別：
 | 🎰 賭博 | 賭、博彩、casino、betting |
 | 📣 群組推廣 | @xxx、t.me/xxx、加微信 |
 | 🎁 假優惠 | 免費領、紅包、優惠碼、推廣碼 |
-| 📢 英文 Spam | promotion, giveaway, earn money, free crypto |
+| 📢 **英文 Spam** | promotion, giveaway, earn money, free crypto |
+| 📸 **圖片 OCR** | 純圖片廣告→Tesseract 本地辨識文字→模式比對 |
 
 > 可自行在 `teleshield.py` 中的 `SPAM_PATTERNS` 列表中添加自定義模式。
 
@@ -147,6 +153,7 @@ TeleShield/
 - [ ] 學習模式：手動標記後自動歸納特徵
 - [ ] 封鎖日報：每日 / 每週封鎖摘要報告
 - [ ] 白名單 / 黑名單管理指令
+- [x] 圖片廣告辨識：Tesseract 本地 OCR
 
 ---
 
